@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Financial Assets Demo</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.3.1/d3.min.js" integrity="sha512-9H86d5lhAwgf2/u29K4N5G6pZThNOojI8kMT4nT4NHvVR02cM85M06KJRQXkI0XgQWBpzQyIyr8LVomyu1AQdw==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js" integrity="sha512-HjKxWye8lJGPu5q1u/ZYkHlJrJdm6KGr89E6tOrXeKm1mItb1xusPU8QPcKVhP8F9LjpZT7vsu1Fa+dQywP4eg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-collection/1.0.5/d3-collection.min.js" integrity="sha512-wYLIhsNaJ6cBEcFIgAtY0ncVV3KEzE95+32OfOdQJQkEfZVrWOn+N2woUPaBCuW8N6S7++72Y7XlOPZ/3U7X2w==" crossorigin="anonymous"></script>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/bootstrap-slider.min.js" integrity="sha512-f0VlzJbcEB6KiW8ZVtL+5HWPDyW1+nJEjguZ5IVnSQkvZbwBt2RfCBY0CBO1PsMAqxxrG4Di6TfsCPP3ZRwKpA==" crossorigin="anonymous"></script>
+    
+    <!-- <script src='../js/jquery.js'></script> -->
+    <script src='../js/jquery.sparkline.js'></script>
+    <script src='../js/snowflakeWrapper.js'></script>
+    <script src='../js/ui.js'></script>
+    <script src='../js/query.js'></script>
+    <script src='../js/profile.js'></script>
+    <!-- <script src='../js/alpaca.js'></script> -->
+    <script src='../js/ui-sparkline.js'></script>
+    <script src='../js/ui-candlestick.js'></script>
+    <script src='../js/ui-screener.js'></script>
+    <script src='../js/ui-portfolio-breakdown.js'></script>
+    <script src='../js/ui-modal.js'></script>
+    <script src='../js/creds.js'></script>
+    <script src='../js/ui-supplier.js'></script>
+    <script src='../js/ui-showAsset.js'></script>
+
+    <style>
+      .modebar{
+        display: none !important;
+      }
+
+      .modal-content{
+        background-color: #202020;
+        color: white;
+      }
+    </style>
+
+    <script>
+      //localStorage.removeItem("gbl");
+      var shwProfile = true;
+      if(localStorage.getItem("gbl") == null){
+        var gbl = {};
+        gbl.portfolio = []
+        gbl.sfconn = null;
+        gbl.candleCompare = []
+        gbl.uuid = generateGuid();
+      }else{
+        shwProfile = false;
+        gbl = JSON.parse(localStorage.getItem("gbl"));
+      }
+      
+      var PersonalAcct = snowflake.createConnection(config.snowflake);
+      var IndustryAcct = snowflake.createConnection(config.industry);
+      var SparklineAcct = snowflake.createConnection(config.sparkline);
+
+      //connect to personal account
+      connect(PersonalAcct).then((conn)=>{          
+          //connect to Industry account
+          connect(IndustryAcct).then((indConn)=>{
+            gbl.indconn = indConn;
+            getSandPSparkline();
+            initUI();
+            if(shwProfile){
+              showProfile(); 
+            }else{
+              showScreenr();
+            }
+            //connect to Snowflake account for sparklines (Uses different WHs)
+            connect(SparklineAcct).then((sparkConn)=>{
+              gbl.sparkConn = sparkConn;
+            })
+
+          })//end original connection
+
+          gbl.sfconn = conn;
+          return;
+      });
+
+    </script>
+
+
+    <style>
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+          height: 100%;
+      }
+    </style>
+
+  </head>
+
+  <body style='background-color: black; color:white;' >
+    <!-- BOTTOM SCROLL NEWS FEED BAR -->
+    <div style='background-color: black;position: absolute; bottom: 0; width: 100%;height: 5%;z-index: 999;border-top: 1px ridge #555;'>
+      <marquee behavior="scroll" onmouseover="this.stop()" onmouseout="this.start()" direction="left" id='trends-marquee'>
+
+      </marquee>
+    </div>
+
+
+    <div class="d-md-flex h-100 align-items-center">
+      <!-- First Half LEFT SIDE BAR-->
+      <div class="col-md-2 p-0 h-100">
+          <div class="text-white d-md-flex text-center justify-content-center">
+            
+            <div class="w-100">
+              <br><h3>Market Advantage</h3>
+              <div class="btn-group dropright w-100">
+                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">Menu</button>
+                <div class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
+                  <a class="dropdown-item" href="#" onclick="showLeaderboard()">Leaderboard</a>
+                  <a class="dropdown-item" href="#" onclick="showProfile()">Profile</a>
+                </div>
+              </div>
+
+
+              <div class="btn-group dropright w-100">
+                <button type="button" class="btn btn-secondary" style='border-radius: 0px;border-color: black;' onclick="showScreenr()">Screenr</button>
+              </div>
+
+              <!-- Heat Map button -->
+              <div class="btn-group dropright w-100">
+                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">Index Maps</button>
+                <div class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
+                  <a class="dropdown-item" href="#" onclick="S_P_500()">S&P 500</a>
+                  <a class="dropdown-item" href="#" onclick="Nasdaq_QQQ()">NASDAQ</a>
+                  <a class="dropdown-item" href="#" onclick="DJI()">Dow Jones (DJI)</a>
+                </div>
+              </div>
+
+              <!-- Screener button -->
+              <br>
+              <div class="btn-group dropright w-100">
+                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">My Portfolios</button>
+                <div id='portfolio-dropdown' class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
+                  
+                  <div class="input-group mb-5">
+                    <input type="text" class="form-control" id='new-port-input' placeholder="New Portfolio Name"  aria-describedby="basic-addon1">
+                    <button type="button" class="btn btn-dark" onclick='make_portfolio($("#new-port-input").val())'>👍</button>
+                  </div>
+                  <div class="dropdown-divider"></div>
+                  
+                  <a class="dropdown-item" href="#" onclick="showAllPortfolios()"><strong>Show All</strong></a>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+       
+          <!-- SIDE BARS -->
+          <br><br>
+
+          <div id='screener-side-bar' class="w-100 text-center justify-content-center">
+            <div class="input-group mb-3">
+              <div class="input-group-prepend">
+                <span class="input-group-text" id="basic-addon1">Ticker</span>
+              </div>
+              <input type="text" class="form-control" placeholder="Ticker" maxlength="10" aria-label="Ticker" id='ticker-input' style="text-transform:uppercase" aria-describedby="basic-addon1">
+              <button type="button" class="btn btn-success" onclick="showScreenr()">go</button>
+
+            </div>
+
+
+            <div class="input-group mb-3">
+              <div class="input-group-prepend">
+                <label class="input-group-text" for="exchange-input-select">Economy</label>
+              </div>
+              <select class="custom-select" id="exchange-input-select" onchange="showScreenr();getSector();">
+                <option selected>All</option>
+                
+              </select>
+            </div>
+
+              <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                  <label class="input-group-text" for="sector-input-select">Sector</label>
+                </div>
+                <select class="custom-select" id="sector-input-select" onchange="showScreenr();getIndustry()">
+                  <option selected>All</option>
+                </select>
+              </div>
+
+              <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                  <label class="input-group-text" for="industry-input-select">Industry</label>
+                </div>
+                <select class="custom-select" id="industry-input-select" onchange="showScreenr()">
+                  <option selected>All</option>
+                  
+                </select>
+              </div>
+
+              <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                  <label class="input-group-text" for="mc-start-input-select">cap</label>
+                </div>
+                <select class="custom-select" id="mc-start-input-select" onchange="showScreenr()">
+                  <option selected>0</option>
+                  <option>1000</option>
+                  <option>2000</option>
+                  <option>3000</option>
+                  <option>4000</option>
+                  <option>5000</option>
+                  <option>6000</option>
+                  <option>7000</option>
+                  <option>8000</option>
+                  <option>9000</option>
+                  <option>10000</option>
+                  <option>11000</option>
+                  <option>12000</option>
+                  <option>13000</option>
+                  <option>14000</option>
+                  <option>15000</option>
+                  <option>16000</option>
+                  <option>17000</option>
+                  <option>18000</option>
+                  <option>19000</option>
+                  <option>20000</option>
+                  <option>21000</option>
+                  <option>22000</option>
+                  <option>23000</option>
+                  <option>24000</option>
+                  <option>25000</option>
+                  <option>26000</option>
+                  <option>27000</option>
+                  <option>28000</option>
+                  <option>29000</option>
+                  <option>30000</option>
+                </select>
+                <div class="input-group-prepend">
+                  <label class="input-group-text" for="mc-start-input-select">-</label>
+                </div>
+             
+                <select class="custom-select" id="mc-end-input-select" onchange="showScreenr()">
+                  <option>1000</option>
+                  <option>2000</option>
+                  <option>3000</option>
+                  <option>4000</option>
+                  <option>5000</option>
+                  <option>6000</option>
+                  <option>7000</option>
+                  <option>8000</option>
+                  <option>9000</option>
+                  <option>10000</option>
+                  <option>11000</option>
+                  <option>12000</option>
+                  <option>13000</option>
+                  <option>14000</option>
+                  <option>15000</option>
+                  <option>16000</option>
+                  <option>17000</option>
+                  <option>18000</option>
+                  <option>19000</option>
+                  <option>20000</option>
+                  <option>21000</option>
+                  <option>22000</option>
+                  <option>23000</option>
+                  <option>24000</option>
+                  <option>25000</option>
+                  <option>26000</option>
+                  <option>27000</option>
+                  <option>28000</option>
+                  <option>29000</option>
+                  <option selected>30000</option>
+                </select>
+
+              </div>
+
+              
+
+          </div><!-- END SIDE BAR-->
+
+          <div id='indicies-side-bar' class="w-100 text-center justify-content-center">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="market-open-cb" onclick='getTreeMap()'>
+              <label class="form-check-label" for="market-open-cb">Scale to Change</label>
+            </div>
+            
+          </div>
+
+          <div class="w-100 text-center justify-content-center">
+            
+          </div>
+
+      </div>
+      
+      <!-- Second Half -->
+      <div class="col-md-10 p-0 h-100">
+        <!-- Tree Map in the UI -->
+        <div id='treeDiv' style="height:95%;width:100%">
+          <svg id="treeMap" style="height:100%;width:100%"></svg>
+        </div> 
+
+        <!-- Screener Div in the UI -->
+        <div id='screenrDiv' style="height:95%;width:100%;overflow:scroll"></div> 
+
+        <!-- all portfolios div -->
+        <div id='all-ports-Div' style="height:95%;width:100%;overflow:scroll"></div> 
+
+        <!-- show leader board-->
+        <div id='all-leaderboard' style="height:95%;width:100%;overflow:scroll">
+          <table class='table table-sm table-dark table-hover'>
+            <thead>
+              <tr>
+                <th class="text-center">📛<br>Name</th>
+                <th class="text-center">👩‍💻<br>Tag</th>
+                <th class="text-center">⚔️<br>Assets</th>
+                <th class="text-center">💰<br>Purchase Value</th>
+                <th class="text-center">🏷<br>Market Value</th>
+                <th class="text-center">💰<br>P/L</th>
+                <th class="text-center">⚖<br>%</th>
+              </tr>
+            </thead>
+            <tbody id='leaderboard-table' style='background-color: black;'></tbody>
+          </table>
+
+        </div> 
+
+
+        <!-- individual portfolio -->
+        <div id='indi-ports-Div' style="height:95%;width:100%;overflow:scroll">
+          <br>
+          <h1 id='portfolio-close-btn' onclick="showAllPortfolios()" style='color:red'>🅧</h1>
+          <h1 id='portfolio-id-in-div'>💼-</h1>
+          
+          <table class='table table-sm table-dark'>
+            <thead>
+              <tr>
+                <th class="text-center">🎫<br>Symbol</th>
+                <th class="text-center">⏰<br>Purchase Time</th>
+                <th class="text-center">🔖<br>Purchase Price</th>
+                <th class="text-center">🏷<br>Current Price</th>
+                <th class="text-center">⚖<br>Units</th>
+                <th class="text-center">💰<br>Cost</th>
+                <th class="text-center">💰<br>FMV</th>
+                <th class="text-center">𒈟<br>Profit/Loss</th>
+              </tr>
+            </thead>
+            <tbody id='port-tbody' style='background-color: black;'></tbody>
+          </table>
+
+
+        </div> 
+
+
+
+        
+        <!-- show assets div -->
+        <div id='show-asset-div' style="height:95%;width:100%;overflow:scroll">
+          <br>
+          
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col">
+                <span onclick="closeAssetPage();" style='color:red; font-size: 40px;'>🅧</span>
+                <span style='font-size: 40px;' id='asset-ticker'></span> 
+                <br>
+                <span style='font-size: 20px;' id='show-asset-name'></span> 
+              </div>
+
+              <div class='col-xs-4'>
+                  <div class="btn-group dropdown w-100" style='width:100px'>
+                    <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
+                    <div id='asset-add-dropdown' class="dropdown-menu" x-placement="down-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform; width:350px">
+                    </div>
+                  </div>
+                </div><!--end cols-->
+            </div>
+
+            <div class="row">
+              <div class="col">
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#supplierModal">Suppliers</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#GeorevModal">Geo-Revenue</button>
+
+              </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                  <table class='table table-sm table-dark' style='width:100%'>
+                    <thead>
+                      <tr>
+                        <th>🏛 Economy</th>
+                        <th>🏭 Industry</th>
+                        <th>𑅀 Sector</th>
+                        
+                        <th>💰 Market Cap</th>
+                        <th>👐 Open</th>
+                        <th>↔️ Range</th>
+                        <th>💹 Volume</th>
+                      </tr>
+                  </thead>
+      
+                  <tbody style='background-color:black'>
+                    <tr>
+                      <td id='asset-table-exchange'>-</td>
+                      <td id='asset-table-industry'>-</td>
+                      <td id='asset-table-sector'>-</td>
+                      
+                      <td id='asset-table-mktcap'>-</td>
+                      <td id='asset-table-open'>-</td>
+                      <td id='asset-table-range'>-</td>
+                      <td id='asset-table-volume'>-</td>
+                    </tr>
+                    <tbody>
+                  </table>
+                </table>
+
+                <table class='table table-sm table-dark' style='width:100%'>
+                    <tr>
+                        <th>Revenue</th>
+                        <th>OpEx</th>
+                        <th>Income</th>
+                        <th>COGS</th>
+                        <th>EPS</th>
+                        <th>Debt</th>
+                        <th>Div/Share</th>
+                    </tr>
+                    <tr style='background-color:black'>
+                      <td id='asset-table-rev-spark'>-</td>
+                      <td id='asset-table-opex-spark'>-</td>
+                      <td id='asset-table-income-spark'>-</td>
+                      <td id='asset-table-eps-spark'>-</td>
+                      <td id='asset-table-cogs-spark'>-</td>
+                      <td id='asset-table-debt-spark'>-</td>
+                      <td id='asset-table-div-spark'>-</td>
+                    </tr>
+                  </table>
+                  <br>
+                                  
+                </div>
+                
+        </div>
+      </div>
+
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-xs-4">
+            
+            <div class="input-group sm-2" id='add-compare-input-area'>
+              <input type="text" class="form-control input-sm" placeholder="Ticker" maxlength="10" id='candle-ticker-input' style="text-transform:uppercase; " aria-describedby="basic-addon1">
+              <button type="button" id='add-trace-btn' class="btn btn-success btn-sm" onclick="addTraceToCandle($('#candle-ticker-input').val().toUpperCase());$('#candle-ticker-input').val('')">add</button>&nbsp;&nbsp;&nbsp;
+              <div id='add-compare-input-area-pills'></div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-6">
+              <div id="asset-candle-container" style='background-color:black; width: 100%;'></div>
+            </div>
+            <!-- <div class="col-md-6">
+              <div class="row">
+                <span id='hov-date'>-</span>&nbsp;|&nbsp;<span style='height: 50px;width: 500px;'>Price & Volume</span>
+                <div>
+                  <span id='spark-asset-history' ></span>
+                </div>
+              </div> -->
+
+
+              <!-- SUPPLIER-TABLE  -->
+              <div class="col-xs-6">
+                
+                <!-- <div id ='supplier-tree' style='width:500px; height:500px' ></div> -->
+              </div>
+
+        </div>
+        
+       
+    </div>  
+    
+    <br><br><br><br><br><br>
+  </div> <!-- END VIEW -->
+
+        <!-- individual portfolios div -->
+        <div id='portfolio-assets-div' style="height:95%;width:100%;overflow:scroll"></div> 
+
+        <!-- Profile Div in the UI -->
+        <div id='profileDiv' class="text-white text-center align-items-center justify-content-center" style="height:100%;width:100%;overflow:scroll">
+          <h1>My Profile</h1>
+          <p>Find your profile information below.</p>
+          <br><br>
+          
+          <h4>ID</h4>
+          <h5 id='user-id-profile'>--</h5>
+          <br>
+
+          <div class='form-row justify-content-center'>
+            <div class="input-group" style='width:450px'>
+              <div class="input-group-prepend">
+                <span class="input-group-text" id="basic-addon1">User Tag @</span>
+              </div>
+              <input type="text" class="form-control" placeholder="User Tag" maxlength="30" aria-label="user-tag" id='user-tag-input' aria-describedby="basic-addon1">
+              <button type="button" class="btn btn-warning" onclick="setUserTag($('#user-tag-input').val())">Set</button>
+            </div>
+          </div>
+          <p>Please note changing this will reset all your portfolios.</p>
+
+          <br>
+
+          <!-- <h2>Snowflake Credentials</h2>
+          <div class='form-row justify-content-center'>
+            
+            <form>
+              <div class="form-group">
+                <label for="profile-account">Account</label>
+                <input type="text" class="form-control" id="profile-account" aria-describedby="emailHelp" placeholder="Snowflake Account">
+              </div>
+              
+              <div class="form-group">
+                <label for="profile-user">User</label>
+                <input type="text" class="form-control" id="profile-user" placeholder="User">
+              </div>
+
+              <div class="form-group">
+                <label for="exampleInputPassword1">Password</label>
+                <input type="password" class="form-control" id="profile-password" placeholder="Password">
+              </div>
+
+              <div class="form-group">
+                <label for="profile-user">Warehouse</label>
+                <input type="text" class="form-control" id="profile-warehouse" placeholder="Warehouse">
+              </div>
+
+              <div class="form-group">
+                <label for="profile-user">Role</label>
+                <input type="text" class="form-control" id="profile-role" placeholder="Snowflake Role">
+              </div>
+
+              <button class="btn btn-primary">Save</button>
+            </form>
+
+            
+          </div>
+
+          <br><br>
+
+          <h2>Alpaca Credentials</h2>
+          <div class='form-row justify-content-center'>
+            
+            <form>
+              <div class="form-group">
+                <label for="profile-account">Key ID</label>
+                <input type="text" class="form-control" id="profile-account" aria-describedby="emailHelp" placeholder="Alpaca Key ID">
+              </div>
+              
+              <div class="form-group">
+                <label for="profile-user">Secret Key</label>
+                <input type="text" class="form-control" id="profile-user" placeholder="Secret Key">
+              </div>
+
+              <button class="btn btn-primary" onclick="alert('saving alpaca')">Save</button>
+            </form>
+
+            
+          </div> -->
+
+          <br>
+
+          <h4>Portfolio(s)</h4>
+          <p>Below are your portfolios. Delete/Create as necessary. 
+            <br>You can create new ones by going to <b>My Portfolios</b> or below
+            <div class='form-row justify-content-center'>
+              <div class="input-group mb-5" style='width:450px'>
+                <input type="text" class="form-control" id='new-port-input-profile' placeholder="New Portfolio Name"  aria-describedby="basic-addon1">
+                <button type="button" class="btn btn-dark" onclick='make_portfolio($("#new-port-input-profile").val())'>👍</button>
+              </div>
+            </div>
+          <div id='portfolio-dropdown-profile'></div>
+
+          <br><br><br><br>
+
+
+        </div> 
+
+      </div>
+
+
+    </div>
+
+
+
+
+
+<!-- MODAL DIVS BELOW  -->
+<div>
+
+<!-- SELL MODAL -->
+<div class="modal fade" id="sellModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="sell-modal-title">Sell Asset</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+
+        <div class="input-group mb-3">
+          <input type="number" class="form-control" id='port-units-sell-input' placeholder="Units" min="1" max="5" aria-describedby="basic-addon1">
+          <button type="button" class="btn btn-dark" onclick='alert()'>👍</button>
+        </div>
+
+        <table class="table table-sm table-dark">
+          <thead>
+            <tr>
+              <th scope="col">Purchase</th>
+              <th scope="col">Current</th>
+              <th scope="col">Units</th>
+              <th scope="col">+/-</th>
+              <th scope="col">PnL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td id='sell-modal-purchase'>-</td>
+              <td id='sell-modal-current'>-</td>
+              <td id='sell-modal-units'>-</td>
+              <td id='sell-modal-plus'>-</td>
+              <td id='sell-modal-pnl'>-</td>
+            </tr>
+          </tbody>
+        </table>
+        <h4 id="modalSellDollarValue">$-</h4>
+
+
+      </div>
+      <div class="modal-footer" id='modal-footer-buttons'>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <!-- <button type="button" class="btn btn-primary" id="modelSellBtn">Sell</button> -->
+        <script>
+            $("#sellModal").on("hidden.bs.modal", function () {
+              $('#modelSellBtn').remove();
+            });
+        </script>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- SUPPLIER MODAL -->
+<div class="modal fade" id="supplierModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >Suppliers</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='supplier-modal-body'>
+
+        <table class="table table-sm table-dark">
+          <thead>
+            <tr>
+              <th scope="col">Entity ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">Country</th>
+              <th scope="col">Type</th>
+              <th scope="col">Rev-%</th>
+              <th scope="col"></th>
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody id='ticker-supplier-table' style='background-color: black;'></tbody>
+        </table>
+
+
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- GeorevModal MODAL -->
+<div class="modal fade" id="GeorevModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >Geo Revenue</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='supplier-modal-body'>
+
+        <table class="table table-sm table-dark">
+          <thead>
+            <tr>
+              <th scope="col">Country</th>
+              <th scope="col">Rank</th>
+              <th scope="col">Class</th>
+              <th scope="col">Rev%</th>
+            </tr>
+          </thead>
+          <tbody id='ticker-georev-table' style='background-color: black;'></tbody>
+        </table>
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+</div><!-- end modal div-->
+
+
+
+
+
+    
+  </body>
+</html>
+
+
