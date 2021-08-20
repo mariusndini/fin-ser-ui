@@ -1,8 +1,13 @@
+var TA = require('technicalindicators');
+var daysPrior = 365;
+var candleTicker = 'SNOW';
+
 function getCandleStickData(asset){
+	candleTicker = asset;
 	var SQL = ` SELECT PRICE_DATE, PRICE_OPEN, PRICE_HIGH, PRICE_LOW, PRICE
 				FROM FIN_DEMO_UI.UI.CANDLESTICK_AGG
 				WHERE TICKER IN ('`+asset+`-US') and 
-					D BETWEEN CURRENT_DATE() - (100) AND CURRENT_DATE()+1`;
+					D BETWEEN CURRENT_DATE() - (${daysPrior}) AND CURRENT_DATE()+1`;
 
 
     runSQL(gbl.indconn, SQL).then((res)=>{
@@ -11,15 +16,30 @@ function getCandleStickData(asset){
 		var high = []
 		var low = []
 		var open = []
+		var dojis = { max:0, doji:[] }
 
-		for(i=0; i<res.length;i++){
+		for(i=0; i < res.length;i++){
 			x.push(res[i].PRICE_DATE)
 			close.push(res[i].PRICE)
 			high.push(res[i].PRICE_HIGH)
 			low.push(res[i].PRICE_LOW)
 			open.push(res[i].PRICE_OPEN)
+	
+			var isDoji = TA.doji({open: [res[i].PRICE_OPEN],
+				high: [res[i].PRICE_HIGH],
+				close: [res[i].PRICE],
+				low: [res[i].PRICE_LOW]})
+
+			
+			if(res[i].PRICE_HIGH >= dojis.max){
+				dojis.max = res[i].PRICE_HIGH
+			}
+			if(isDoji){
+				dojis.doji.push( res[i].PRICE_DATE )
+			}
 
 		}
+		gbl.currentAssetDoji = dojis;
 		drawCandleStick ('asset-candle-container', x, close, high, low, open, asset)
 
     })
@@ -87,10 +107,13 @@ function drawCandleStick(div, x, close, high, low, open, asset){
 
 
 function addTraceToCandle(asset){
+	if(asset === 'TA:DOJI'){
+		addDojiTrace();
+	}
 	var SQL = ` SELECT PRICE_DATE, PRICE
 				FROM FIN_DEMO_UI.UI.CANDLESTICK_AGG
 				WHERE TICKER IN ('`+asset+`-US') and 
-					D BETWEEN CURRENT_DATE() - 100 AND CURRENT_DATE()+1`;
+					D BETWEEN CURRENT_DATE() - ${daysPrior} AND CURRENT_DATE()+1`;
 	
 	runSQL(gbl.indconn, SQL).then((res)=>{
 		var x = []
@@ -98,7 +121,7 @@ function addTraceToCandle(asset){
 		var ry = []
 		if(res.length>0){
 			gbl.candleCompare.push(asset);
-			$('#add-compare-input-area-pills').append(`<span class="translate-middle badge rounded-pill bg-danger" onclick="deleteTrace('asset-candle-container', `+gbl.candleCompare.length+`);this.remove()">`+asset+`</span>`);
+			$('#add-compare-input-area-pills').append(`<span class="translate-middle badge rounded-pill bg-danger" onclick="deleteTrace('asset-candle-container', `+(gbl.candleCompare.length)+`);this.remove()">`+asset+`</span>`);
 		}
 
 		for(i=0; i<res.length;i++){
@@ -127,6 +150,36 @@ function addTraceToCandle(asset){
 }
 
 function deleteTrace(div, index){
+	console.log(div, index);
+
 	Plotly.deleteTraces(div, index);
 	gbl.candleCompare.splice(index, 1);
 };
+
+
+function addDojiTrace(){
+	var x = []
+	var y = []
+	for(i=0; i<gbl.currentAssetDoji.doji.length;i++){
+		y.push( gbl.currentAssetDoji.max )
+		x.push( gbl.currentAssetDoji.doji[i] )
+	}
+	console.log(x, y)
+
+	Plotly.addTraces('asset-candle-container', {
+		x: x,
+		y: y,
+		mode: 'markers',
+		name: 'DOJI',
+		marker: { size: 6 }
+		}
+	)
+
+
+
+}
+
+function chartSetDays(days){
+	daysPrior = days;
+	getCandleStickData(candleTicker);
+}

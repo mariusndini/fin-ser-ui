@@ -74,7 +74,8 @@ function showScreenr(){
     var ticker = $('#ticker-input').val();
 
     var SQL = ` select DISTINCT SYMBOL, T, PCT_CHANGE, OFFICIALOPEN, HIGH, ACCUMULATEDVOLUME, VWAP,
-                       MKTCAP, LASTDIV, EXCHANGE, INDUSTRY, SECTOR, RANGE, SYM_ID::STRING AS SYM_ID, NAME, FSYM_ID
+                       MKTCAP, LASTDIV, EXCHANGE, INDUSTRY, SECTOR, RANGE, SYM_ID::STRING AS SYM_ID, NAME, ENTITY_ID, ENTITY_PROPER_NAME
+                       ,ENTITY_PROFILE, FIGI
                 from FIN_DEMO_UI.UI.SCREENER
                 where true `;
 
@@ -89,11 +90,12 @@ function showScreenr(){
     if(sector_filter != 'All'){
         SQL += ` and SECTOR = '${sector_filter}'`
     }
+
     if(ticker != ""){
-        SQL += ` and SYMBOL like UPPER('%${ticker}%')`
+        SQL += ` and (SYMBOL like UPPER('%${ticker}%') or ENTITY_ID like UPPER('%${ticker}%') or FIGI like UPPER('%${ticker}%'))`
     }
 
-    SQL += ` and MKTCAP >= ${mc_start} * 100000000 and MKTCAP <= ${mc_end} * 1000000000 `
+    SQL += ` and MKTCAP >= ${mc_start} * 1000 and MKTCAP <= ${mc_end} * 1000 `
     
     SQL += ` order by ${screenrSort.col} ${screenrSort.type}
             limit 100`;
@@ -106,22 +108,21 @@ function showScreenr(){
     
     var th = `<tr>
                 <th class="text-center" onclick='setScreenrOrder("1")' scope="col">🎫<br>Symbol</th>
-                <td style='width:20px'></td>
+                    <td style='width:20px'></td>
                 <th class="text-center" onclick='setScreenrOrder("2")' scope="col">⏰<br>Time</th>
 
-                <th class="text-center" style='width:70px;' onclick='setScreenrOrder("11")' scope="col">🏛<br>Economy</th>
-                <th class="text-center" style='width:70px;' onclick='setScreenrOrder("12")' scope="col">🏭<br>Industry</th>
-                <th class="text-center" style='width:70px;' onclick='setScreenrOrder("13")' scope="col">𑅀<br>Sector</th>
+                <th class="text-center" style='width:70px;' onclick='setScreenrOrder("10")' scope="col">🏛<br>Economy</th>
+                <th class="text-center" style='width:70px;' onclick='setScreenrOrder("11")' scope="col">🏭<br>Industry</th>
+                <th class="text-center" style='width:70px;' onclick='setScreenrOrder("12")' scope="col">𑅀<br>Sector</th>
 
 
                 <th class="text-center" onclick='setScreenrOrder("3")' scope="col">%<br>Pct Change</th>
                 <th class="text-center" onclick='setScreenrOrder("5")' scope="col">🏷<br>Price</th>
 
                 <th class="text-center" onclick='setScreenrOrder("6")' scope="col">💹<br>Volume</th>
-                <th class="text-center" onclick='setScreenrOrder("9")' scope="col">💰<br>Market Cap</th>
+                <th class="text-center" onclick='setScreenrOrder("8")' scope="col">💰<br>Market Cap</th>
 
-                <th class="text-center" onclick='setScreenrOrder("10")' scope="col">💸<br>VWAP</th>
-                <th class="text-center" onclick='setScreenrOrder("14")' scope="col">↔️<br>Range</th>
+                <th class="text-center" onclick='setScreenrOrder("7")' scope="col">💸<br>VWAP</th>
 
                 </tr>`;
     $('#screenr-table thead').append(th)
@@ -155,10 +156,8 @@ function showScreenr(){
                 </div>
             </div>`
 
-            
-
-            var tr = $(`<tr>`).append(`<td style="width: 1%;white-space: nowrap;"><a href='#' onclick="showAsset('${res[i].SYMBOL}', ${i} )">${res[i].SYMBOL} | ${(res[i].FSYM_ID==null ? "-" : res[i].FSYM_ID)}</a>
-                                            <br><span style='font-size:12px'>${(res[i].NAME==null ? "-" : res[i].NAME)}</span>
+            var tr = $(`<tr>`).append(`<td style="width: 1%;white-space: nowrap;"><a href='#' onclick="showAsset('${res[i].SYMBOL}', ${i} )">${res[i].SYMBOL} | ${(res[i].ENTITY_ID==null ? "-" : res[i].ENTITY_ID)} | ${(res[i].FIGI==null ? "-" : res[i].FIGI)}</a>
+                                            <br><span style='font-size:12px'>${(res[i].ENTITY_PROPER_NAME==null ? "-" : res[i].ENTITY_PROPER_NAME)}</span>
                                        </td>
                                        
                                        <td>${stock_popup}</td>
@@ -175,7 +174,6 @@ function showScreenr(){
                                        <td class="text-right" >${parseFloat(res[i].MKTCAP).toLocaleString('en',{maximumFractionDigits: 0})}</td>
 
                                        <td class="text-right" >${parseFloat(res[i].VWAP).toLocaleString('en', {maximumFractionDigits: 2, minimumFractionDigits: 2})}</td>
-                                       <td class="text-right">${res[i].RANGE}</td>
                                        `)
             
             $('#screenr-table tbody').append(tr)
@@ -186,4 +184,14 @@ function showScreenr(){
     showMenu('screenrDiv'); 
     $('#screener-side-bar').show();
     
+}
+
+
+//adds a new column to the screener table 
+function addColumn(){
+    $('#screenr-table').find('tr').each(function(){
+        $(this).find('td').eq(10).after('<td>new cell added</td>');
+   });
+
+
 }

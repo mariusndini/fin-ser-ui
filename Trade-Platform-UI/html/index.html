@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>Financial Assets Demo</title>
+    <title>Market Advantage (Demo app)</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
@@ -19,7 +19,7 @@
     <script src='../js/jquery.sparkline.js'></script>
     <script src='../js/snowflakeWrapper.js'></script>
     <script src='../js/ui.js'></script>
-    <script src='../js/query.js'></script>
+    <script src='../js/treemap.js'></script>
     <script src='../js/profile.js'></script>
     <!-- <script src='../js/alpaca.js'></script> -->
     <script src='../js/ui-sparkline.js'></script>
@@ -30,6 +30,10 @@
     <script src='../js/creds.js'></script>
     <script src='../js/ui-supplier.js'></script>
     <script src='../js/ui-showAsset.js'></script>
+    <script src='../js/ui-leaderboard.js'></script>
+    <script src='../js/ui-map.js'></script>
+    <script src='../js/bitcoin.js'></script>
+    <script src='../js/polygon.js'></script>
 
     <style>
       .modebar{
@@ -50,6 +54,8 @@
         gbl.portfolio = []
         gbl.sfconn = null;
         gbl.candleCompare = []
+        gbl.portCompare = []
+        gbl.portUUID = 0
         gbl.uuid = generateGuid();
       }else{
         shwProfile = false;
@@ -95,42 +101,51 @@
       html {
           height: 100%;
       }
+      .snowbutton{
+        font-weight: bold;
+      }
     </style>
 
   </head>
 
   <body style='background-color: black; color:white;' >
     <!-- BOTTOM SCROLL NEWS FEED BAR -->
-    <div style='background-color: black;position: absolute; bottom: 0; width: 100%;height: 5%;z-index: 999;border-top: 1px ridge #555;'>
-      <marquee behavior="scroll" onmouseover="this.stop()" onmouseout="this.start()" direction="left" id='trends-marquee'>
+    <div style='background-color: black;position: absolute; bottom: 0; width: 100%;height: 25px;z-index: 999;border-top: 1px ridge #555;'>
+      <div style='color: white; position: relative; width: 0; height: 0'><b>S&P500</b></div>
+      <marquee scrollamount="5" behavior="scroll" onmouseover="this.stop()" onmouseout="this.start()" direction="left" id='trends-marquee'></marquee>
+    </div>
 
-      </marquee>
+    <div style='background-color: rgb(232, 232, 232);position: absolute; bottom: 25px; width: 100%;height: 25px;z-index: 999;border-top: 1px ridge #555;'>
+      <div style='color: black; position: relative; width: 0; height: 0'><b>QQQ100</b></div>
+      <marquee scrollamount="7" behavior="scroll" onmouseover="this.stop()" onmouseout="this.start()" direction="left" id='QQQ-marquee'></marquee>
     </div>
 
 
     <div class="d-md-flex h-100 align-items-center">
-      <!-- First Half LEFT SIDE BAR-->
+      <!-- First Half - LEFT SIDE BAR-->
       <div class="col-md-2 p-0 h-100">
           <div class="text-white d-md-flex text-center justify-content-center">
             
             <div class="w-100">
               <br><h3>Market Advantage</h3>
               <div class="btn-group dropright w-100">
-                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">Menu</button>
+                <button type="button" class="btn btn-primary dropdown-toggle text-right snowbutton" data-toggle="dropdown" style='border-radius: 0px;border-color: black;'  aria-haspopup="true" aria-expanded="false">Menu 📺 </button>
                 <div class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
-                  <a class="dropdown-item" href="#" onclick="showLeaderboard()">Leaderboard</a>
+                  <a class="dropdown-item" href="#" onclick="showLeaderboard()">Fund Portfolios</a>
+                  <a class="dropdown-item" href="#" onclick="showBitcoin();openSocket()">Bitcoin Stream</a>
                   <a class="dropdown-item" href="#" onclick="showProfile()">Profile</a>
                 </div>
               </div>
 
 
               <div class="btn-group dropright w-100">
-                <button type="button" class="btn btn-secondary" style='border-radius: 0px;border-color: black;' onclick="showScreenr()">Screenr</button>
+                <button type="button" class="btn btn-primary text-right snowbutton"style='border-radius: 0px;border-color: black;' onclick="showScreenr()">Screener 👀</button>
               </div>
+
 
               <!-- Heat Map button -->
               <div class="btn-group dropright w-100">
-                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">Index Maps</button>
+                <button type="button" class="btn btn-primary dropdown-toggle text-right snowbutton" data-toggle="dropdown" style='border-radius: 0px;border-color:black' aria-haspopup="true" aria-expanded="false">Index Maps 🗺</button>
                 <div class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
                   <a class="dropdown-item" href="#" onclick="S_P_500()">S&P 500</a>
                   <a class="dropdown-item" href="#" onclick="Nasdaq_QQQ()">NASDAQ</a>
@@ -141,7 +156,7 @@
               <!-- Screener button -->
               <br>
               <div class="btn-group dropright w-100">
-                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">My Portfolios</button>
+                <button type="button" class="btn btn-primary dropdown-toggle text-right snowbutton"data-toggle="dropdown" style='border-radius: 0px;border-color: black;' aria-haspopup="true" aria-expanded="false">My Portfolios 💼</button>
                 <div id='portfolio-dropdown' class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
                   
                   <div class="input-group mb-5">
@@ -150,10 +165,14 @@
                   </div>
                   <div class="dropdown-divider"></div>
                   
-                  <a class="dropdown-item" href="#" onclick="showAllPortfolios()"><strong>Show All</strong></a>
+                  <a class="dropdown-item text-right snowbutton" href="#" onclick="showAllPortfolios()"><strong>Show All</strong></a>
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="btn-group dropright w-100">
+            <button type="button" class="btn btn-primary text-right snowbutton" style='border-radius: 0px;border-color: black;' data-toggle="modal" data-target="#archModal">Architecture 🌆</button>
           </div>
           
        
@@ -165,9 +184,8 @@
               <div class="input-group-prepend">
                 <span class="input-group-text" id="basic-addon1">Ticker</span>
               </div>
-              <input type="text" class="form-control" placeholder="Ticker" maxlength="10" aria-label="Ticker" id='ticker-input' style="text-transform:uppercase" aria-describedby="basic-addon1">
+              <input type="text" class="form-control" placeholder="Ticker" maxlength="20" aria-label="Ticker" id='ticker-input' style="text-transform:uppercase" aria-describedby="basic-addon1">
               <button type="button" class="btn btn-success" onclick="showScreenr()">go</button>
-
             </div>
 
 
@@ -206,72 +224,72 @@
                 </div>
                 <select class="custom-select" id="mc-start-input-select" onchange="showScreenr()">
                   <option selected>0</option>
+                  <option>100</option>
+                  <option>200</option>
+                  <option>300</option>
+                  <option>400</option>
+                  <option>500</option>
+                  <option>600</option>
+                  <option>700</option>
+                  <option>800</option>
+                  <option>900</option>
                   <option>1000</option>
+                  <option>1100</option>
+                  <option>1200</option>
+                  <option>1300</option>
+                  <option>1400</option>
+                  <option>1500</option>
+                  <option>1600</option>
+                  <option>1700</option>
+                  <option>1800</option>
+                  <option>1900</option>
                   <option>2000</option>
+                  <option>2100</option>
+                  <option>2200</option>
+                  <option>2300</option>
+                  <option>2400</option>
+                  <option>2500</option>
+                  <option>2600</option>
+                  <option>2700</option>
+                  <option>2800</option>
+                  <option>2900</option>
                   <option>3000</option>
-                  <option>4000</option>
-                  <option>5000</option>
-                  <option>6000</option>
-                  <option>7000</option>
-                  <option>8000</option>
-                  <option>9000</option>
-                  <option>10000</option>
-                  <option>11000</option>
-                  <option>12000</option>
-                  <option>13000</option>
-                  <option>14000</option>
-                  <option>15000</option>
-                  <option>16000</option>
-                  <option>17000</option>
-                  <option>18000</option>
-                  <option>19000</option>
-                  <option>20000</option>
-                  <option>21000</option>
-                  <option>22000</option>
-                  <option>23000</option>
-                  <option>24000</option>
-                  <option>25000</option>
-                  <option>26000</option>
-                  <option>27000</option>
-                  <option>28000</option>
-                  <option>29000</option>
-                  <option>30000</option>
                 </select>
                 <div class="input-group-prepend">
                   <label class="input-group-text" for="mc-start-input-select">-</label>
                 </div>
              
                 <select class="custom-select" id="mc-end-input-select" onchange="showScreenr()">
+                  <option>100</option>
+                  <option>200</option>
+                  <option>300</option>
+                  <option>400</option>
+                  <option>500</option>
+                  <option>600</option>
+                  <option>700</option>
+                  <option>800</option>
+                  <option>900</option>
                   <option>1000</option>
+                  <option>1100</option>
+                  <option>1200</option>
+                  <option>1300</option>
+                  <option>1400</option>
+                  <option>1500</option>
+                  <option>1600</option>
+                  <option>1700</option>
+                  <option>1800</option>
+                  <option>1900</option>
                   <option>2000</option>
-                  <option>3000</option>
-                  <option>4000</option>
-                  <option>5000</option>
-                  <option>6000</option>
-                  <option>7000</option>
-                  <option>8000</option>
-                  <option>9000</option>
-                  <option>10000</option>
-                  <option>11000</option>
-                  <option>12000</option>
-                  <option>13000</option>
-                  <option>14000</option>
-                  <option>15000</option>
-                  <option>16000</option>
-                  <option>17000</option>
-                  <option>18000</option>
-                  <option>19000</option>
-                  <option>20000</option>
-                  <option>21000</option>
-                  <option>22000</option>
-                  <option>23000</option>
-                  <option>24000</option>
-                  <option>25000</option>
-                  <option>26000</option>
-                  <option>27000</option>
-                  <option>28000</option>
-                  <option>29000</option>
-                  <option selected>30000</option>
+                  <option>2100</option>
+                  <option>2200</option>
+                  <option>2300</option>
+                  <option>2400</option>
+                  <option>2500</option>
+                  <option>2600</option>
+                  <option>2700</option>
+                  <option>2800</option>
+                  <option>2900</option>
+                  <option selected>3000</option>
                 </select>
 
               </div>
@@ -294,45 +312,91 @@
 
       </div>
       
-      <!-- Second Half -->
+      <!-- Second Half - BODY OF APP -->
       <div class="col-md-10 p-0 h-100">
         <!-- Tree Map in the UI -->
-        <div id='treeDiv' style="height:95%;width:100%">
+        <div id='treeDiv' style="height:93%;width:100%">
           <svg id="treeMap" style="height:100%;width:100%"></svg>
         </div> 
 
         <!-- Screener Div in the UI -->
-        <div id='screenrDiv' style="height:95%;width:100%;overflow:scroll"></div> 
+        <div id='screenrDiv' style="height:93%;width:100%;overflow:scroll"></div> 
 
         <!-- all portfolios div -->
-        <div id='all-ports-Div' style="height:95%;width:100%;overflow:scroll"></div> 
+        <div id='all-ports-Div' style="height:93%;width:100%;overflow:scroll"></div> 
 
         <!-- show leader board-->
-        <div id='all-leaderboard' style="height:95%;width:100%;overflow:scroll">
-          <table class='table table-sm table-dark table-hover'>
-            <thead>
-              <tr>
-                <th class="text-center">📛<br>Name</th>
-                <th class="text-center">👩‍💻<br>Tag</th>
-                <th class="text-center">⚔️<br>Assets</th>
-                <th class="text-center">💰<br>Purchase Value</th>
-                <th class="text-center">🏷<br>Market Value</th>
-                <th class="text-center">💰<br>P/L</th>
-                <th class="text-center">⚖<br>%</th>
-              </tr>
-            </thead>
-            <tbody id='leaderboard-table' style='background-color: black;'></tbody>
-          </table>
+        <div id='all-leaderboard' style="height:93%;width:100%;overflow:scroll">
+          <div style='height:40%;overflow: scroll;'>
+            <table class='table table-sm table-dark table-hover'>
+              <thead>
+                <tr>
+                  <th class="text-center">📛<br>Name</th>
+                  <th class="text-center">👩‍💻<br>Manager</th>
+                  <th class="text-center">💰<br>Purchase Value</th>
+                  <th class="text-center">🏷<br>Market Value</th>
+                  <th class="text-center">💰<br>P/L</th>
+                  <th class="text-center">⚖<br>%</th>
+                </tr>
+              </thead>
+              <tbody id='leaderboard-table' style='background-color: black;'></tbody>
+            </table>
+          </div>
+
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-md-8 text-center">
+                <table class='table table-sm table-dark'>
+                  <tr>
+                    <td>
+                      <b>Fund vs SPY</b>
+                    </td>
+                  </tr>
+                
+                  <tr style='background-color:black'>
+                    <td>
+                      <div id="fund-perf-chart" style='background-color:black; width: 100%;'></div>
+                    </td>
+                  </tr>
+                  
+                </table>
+              </div>
+
+              <div class='col-md-4 text-center' style='height:450px;overflow-y: scroll'>
+                <div style='height:100%;'>
+                  <table class='table table-sm table-dark table-hover'>
+                    <thead>
+                      <tr><td colspan=4><b>Top Holdings</b></td></tr>
+                      <tr>
+                        <th class="text-center">📛<br>Asset</th>
+                        <th class="text-center">🏷<br>Units</th>
+                        <th class="text-center">💼 <br>Count</th>
+                        <th class="text-center">💰 <br>PMV</th>
+                      </tr>
+                    </thead>
+                    <tbody id='lb-asset-table' style='background-color: black;'></tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
 
         </div> 
 
 
         <!-- individual portfolio -->
-        <div id='indi-ports-Div' style="height:95%;width:100%;overflow:scroll">
+        <div id='indi-ports-Div' style="height:93%;width:100%;overflow:scroll">
           <br>
           <h1 id='portfolio-close-btn' onclick="showAllPortfolios()" style='color:red'>🅧</h1>
-          <h1 id='portfolio-id-in-div'>💼-</h1>
+          <h1 id='portfolio-id-in-div'>💼-</h1><br>
           
+          <button type="button" class="btn btn-light" data-toggle="modal" data-target="#portPerfModal">🎭 Performance</button>
+          <button type="button" class="btn btn-light" data-toggle="modal" data-target="#portSupplierModal">🏭 Suppliers</button>
+          <button type="button" class="btn btn-light" data-toggle="modal" data-target="#portRevModal">🌎 Geo-Revenue</button>
+          <button type="button" class="btn btn-light" data-toggle="modal" data-target="#BurevModal">🗓 Segment Rev</button>
+
           <table class='table table-sm table-dark'>
             <thead>
               <tr>
@@ -344,11 +408,11 @@
                 <th class="text-center">💰<br>Cost</th>
                 <th class="text-center">💰<br>FMV</th>
                 <th class="text-center">𒈟<br>Profit/Loss</th>
+                <th class="text-center">📈<br>%</th>
               </tr>
             </thead>
             <tbody id='port-tbody' style='background-color: black;'></tbody>
           </table>
-
 
         </div> 
 
@@ -356,18 +420,20 @@
 
         
         <!-- show assets div -->
-        <div id='show-asset-div' style="height:95%;width:100%;overflow:scroll">
+        <div id='show-asset-div' style="height:93%;width:100%;overflow:scroll">
           <br>
           
           <div class="container-fluid">
             <div class="row">
               <div class="col">
                 <span onclick="closeAssetPage();" style='color:red; font-size: 40px;'>🅧</span>
-                <span style='font-size: 40px;' id='asset-ticker'></span> 
-                <br>
-                <span style='font-size: 20px;' id='show-asset-name'></span> 
+                <span style='font-size: 40px;' id='asset-ticker'></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <span style='font-size: 30px;' id='show-asset-name'></span><br>
+                <div style='height:50px;overflow: scroll;width:100%;'>
+                    <span style='font-size: 16px;line-height:2px;' id='show-asset-desc'></span>
+                </div>
               </div>
-
+              <br>
               <div class='col-xs-4'>
                   <div class="btn-group dropdown w-100" style='width:100px'>
                     <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
@@ -379,8 +445,13 @@
 
             <div class="row">
               <div class="col">
-                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#supplierModal">Suppliers</button>
-                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#GeorevModal">Geo-Revenue</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#supplierModal">🏭 Suppliers</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#GeorevModal">🌎 Geo-Revenue</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#BurevModal">🗓 Segment Rev</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#newsModal">🗞 News</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#cpiModal"> 📊CPI</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#existingPortsModal" id='exist-port-btn'>💼 Portfolios</button>
+
 
               </div>
             </div>
@@ -395,8 +466,8 @@
                         <th>𑅀 Sector</th>
                         
                         <th>💰 Market Cap</th>
-                        <th>👐 Open</th>
-                        <th>↔️ Range</th>
+                        <th>𝌡 %Change</th>
+                        <th>↔️ VWAP</th>
                         <th>💹 Volume</th>
                       </tr>
                   </thead>
@@ -425,6 +496,7 @@
                         <th>EPS</th>
                         <th>Debt</th>
                         <th>Div/Share</th>
+                        <th id='esg-spark'>ESG</th>
                     </tr>
                     <tr style='background-color:black'>
                       <td id='asset-table-rev-spark'>-</td>
@@ -434,6 +506,7 @@
                       <td id='asset-table-cogs-spark'>-</td>
                       <td id='asset-table-debt-spark'>-</td>
                       <td id='asset-table-div-spark'>-</td>
+                      <td id='asset-table-esg-spark'>-</td>
                     </tr>
                   </table>
                   <br>
@@ -445,11 +518,15 @@
 
       <div class="container-fluid">
         <div class="row">
-          <div class="col-xs-4">
+          <div class="col-xs-6">
             
             <div class="input-group sm-2" id='add-compare-input-area'>
-              <input type="text" class="form-control input-sm" placeholder="Ticker" maxlength="10" id='candle-ticker-input' style="text-transform:uppercase; " aria-describedby="basic-addon1">
+              <input type="number" class="form-control input-sm" value='365' maxlength="3" id='chart-set-days' aria-describedby="basic-addon1" style='width:100px;'>
+              <button type="button" id='add-trace-btn' class="btn btn-success btn-sm" onclick="chartSetDays($('#chart-set-days').val());">Days</button>&nbsp;
+
+              <input type="text" class="form-control input-sm" placeholder="Ticker" maxlength="10" id='candle-ticker-input' style="text-transform:uppercase;width:100px;" aria-describedby="basic-addon1">
               <button type="button" id='add-trace-btn' class="btn btn-success btn-sm" onclick="addTraceToCandle($('#candle-ticker-input').val().toUpperCase());$('#candle-ticker-input').val('')">add</button>&nbsp;&nbsp;&nbsp;
+
               <div id='add-compare-input-area-pills'></div>
             </div>
 
@@ -457,137 +534,100 @@
         </div>
 
         <div class="row">
-            <div class="col-xs-6">
+            <div class="col-md-12" style='padding:0px'>
               <div id="asset-candle-container" style='background-color:black; width: 100%;'></div>
             </div>
-            <!-- <div class="col-md-6">
-              <div class="row">
-                <span id='hov-date'>-</span>&nbsp;|&nbsp;<span style='height: 50px;width: 500px;'>Price & Volume</span>
-                <div>
-                  <span id='spark-asset-history' ></span>
-                </div>
-              </div> -->
 
-
+  
               <!-- SUPPLIER-TABLE  -->
-              <div class="col-xs-6">
-                
-                <!-- <div id ='supplier-tree' style='width:500px; height:500px' ></div> -->
-              </div>
+              <!-- <div class="col-xs-6">
+              </div> -->
 
         </div>
         
        
     </div>  
     
-    <br><br><br><br><br><br>
-  </div> <!-- END VIEW -->
 
-        <!-- individual portfolios div -->
-        <div id='portfolio-assets-div' style="height:95%;width:100%;overflow:scroll"></div> 
-
-        <!-- Profile Div in the UI -->
-        <div id='profileDiv' class="text-white text-center align-items-center justify-content-center" style="height:100%;width:100%;overflow:scroll">
-          <h1>My Profile</h1>
-          <p>Find your profile information below.</p>
-          <br><br>
-          
-          <h4>ID</h4>
-          <h5 id='user-id-profile'>--</h5>
-          <br>
-
-          <div class='form-row justify-content-center'>
-            <div class="input-group" style='width:450px'>
-              <div class="input-group-prepend">
-                <span class="input-group-text" id="basic-addon1">User Tag @</span>
-              </div>
-              <input type="text" class="form-control" placeholder="User Tag" maxlength="30" aria-label="user-tag" id='user-tag-input' aria-describedby="basic-addon1">
-              <button type="button" class="btn btn-warning" onclick="setUserTag($('#user-tag-input').val())">Set</button>
-            </div>
-          </div>
-          <p>Please note changing this will reset all your portfolios.</p>
-
-          <br>
-
-          <!-- <h2>Snowflake Credentials</h2>
-          <div class='form-row justify-content-center'>
-            
-            <form>
-              <div class="form-group">
-                <label for="profile-account">Account</label>
-                <input type="text" class="form-control" id="profile-account" aria-describedby="emailHelp" placeholder="Snowflake Account">
-              </div>
-              
-              <div class="form-group">
-                <label for="profile-user">User</label>
-                <input type="text" class="form-control" id="profile-user" placeholder="User">
-              </div>
-
-              <div class="form-group">
-                <label for="exampleInputPassword1">Password</label>
-                <input type="password" class="form-control" id="profile-password" placeholder="Password">
-              </div>
-
-              <div class="form-group">
-                <label for="profile-user">Warehouse</label>
-                <input type="text" class="form-control" id="profile-warehouse" placeholder="Warehouse">
-              </div>
-
-              <div class="form-group">
-                <label for="profile-user">Role</label>
-                <input type="text" class="form-control" id="profile-role" placeholder="Snowflake Role">
-              </div>
-
-              <button class="btn btn-primary">Save</button>
-            </form>
-
-            
-          </div>
-
-          <br><br>
-
-          <h2>Alpaca Credentials</h2>
-          <div class='form-row justify-content-center'>
-            
-            <form>
-              <div class="form-group">
-                <label for="profile-account">Key ID</label>
-                <input type="text" class="form-control" id="profile-account" aria-describedby="emailHelp" placeholder="Alpaca Key ID">
-              </div>
-              
-              <div class="form-group">
-                <label for="profile-user">Secret Key</label>
-                <input type="text" class="form-control" id="profile-user" placeholder="Secret Key">
-              </div>
-
-              <button class="btn btn-primary" onclick="alert('saving alpaca')">Save</button>
-            </form>
-
-            
-          </div> -->
-
-          <br>
-
-          <h4>Portfolio(s)</h4>
-          <p>Below are your portfolios. Delete/Create as necessary. 
-            <br>You can create new ones by going to <b>My Portfolios</b> or below
-            <div class='form-row justify-content-center'>
-              <div class="input-group mb-5" style='width:450px'>
-                <input type="text" class="form-control" id='new-port-input-profile' placeholder="New Portfolio Name"  aria-describedby="basic-addon1">
-                <button type="button" class="btn btn-dark" onclick='make_portfolio($("#new-port-input-profile").val())'>👍</button>
-              </div>
-            </div>
-          <div id='portfolio-dropdown-profile'></div>
-
-          <br><br><br><br>
+  
+    </div>
 
 
-        </div> 
+    <!-- individual portfolios div -->
+    <div id='portfolio-assets-div' style="height:93%;width:100%;overflow:scroll"></div> 
 
+    <!-- Bitcoin stream div -->
+    <div id='bitcoin-div' style="height:93%;width:100%;overflow:scroll" class='text-center'>
+
+      <div>
+        <H1>Bitcoin Trade Stream</H1>
       </div>
+
+      <table class="table table-sm table-dark">
+        <tr>
+          <td style='width:20%'>Asset</td>
+          <td style='width:20%'>Trade Time</td>
+          <td style='width:20%'>Price</td>
+          <td style='width:20%'>Quantity</td>
+          <td style='width:20%'>$ Value</td>
+        </tr>
+        <tr id='btc-trade'></tr>
+      </table>
+
+      <div class="col-md-12">
+        <div id="btc-candle-container" style='background-color:black; width: 100%;'></div>
+      </div>
+
+      
+    
+    </div> <!-- END BTC PORTION-->
+
+
+    <!-- Profile Div in the UI -->
+    <div id='profileDiv' class="text-white text-center align-items-center justify-content-center" style="height:100%;width:100%;overflow:scroll">
+      <h1>My Profile</h1>
+      <p>Find your profile information below.</p>
+      <br>
+      
+      <div style='display:none;'>
+        <h4>Internal ID</h4>
+        <h5 id='user-id-profile'>--</h5>
+      </div>
+
+      <div class='form-row justify-content-center'>
+        <div class="input-group" style='width:450px'>
+          <div class="input-group-prepend">
+            <span class="input-group-text" id="basic-addon1">User Tag @</span>
+          </div>
+          <input type="text" class="form-control" placeholder="User Tag" maxlength="30" aria-label="user-tag" id='user-tag-input' aria-describedby="basic-addon1">
+          <button type="button" class="btn btn-warning" onclick="setUserTag($('#user-tag-input').val())">Set</button>
+        </div>
+      </div>
+      <p>Please note changing this will reset all your portfolios.</p>
+
+      <br>
+
+      <h4>Portfolio(s)</h4>
+      <p>Below are your portfolios. Delete/Create as necessary. 
+        <br>You can create new ones by going to <b>My Portfolios</b> or below
+        <div class='form-row justify-content-center'>
+          <div class="input-group mb-5" style='width:450px'>
+            <input type="text" class="form-control" id='new-port-input-profile' placeholder="New Portfolio Name"  aria-describedby="basic-addon1">
+            <button type="button" class="btn btn-dark" onclick='make_portfolio($("#new-port-input-profile").val())'>👍</button>
+          </div>
+        </div>
+      <div id='portfolio-dropdown-profile'></div>
+
+      <br><br><br><br>
 
 
     </div>
+  </div> 
+
+</div>
+
+
+</div>
 
 
 
@@ -610,7 +650,7 @@
 
         <div class="input-group mb-3">
           <input type="number" class="form-control" id='port-units-sell-input' placeholder="Units" min="1" max="5" aria-describedby="basic-addon1">
-          <button type="button" class="btn btn-dark" onclick='alert()'>👍</button>
+          <!-- <button type="button" class="btn btn-dark" onclick='alert()'>👍</button> -->
         </div>
 
         <table class="table table-sm table-dark">
@@ -663,6 +703,7 @@
         </button>
       </div>
       <div class="modal-body" id='supplier-modal-body'>
+        <svg id="supp-map-viz" width="800" height="300"></svg>
 
         <table class="table table-sm table-dark">
           <thead>
@@ -701,6 +742,7 @@
         </button>
       </div>
       <div class="modal-body" id='supplier-modal-body'>
+        <svg id="supplier-map-viz" width="800" height="300"></svg>
 
         <table class="table table-sm table-dark">
           <thead>
@@ -721,6 +763,276 @@
     </div>
   </div>
 </div>
+
+
+
+
+<!-- GeorevModal MODAL -->
+<div class="modal fade" id="portRevModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >Portfolio Revenue by Geo</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='supplier-modal-body'>
+        <svg id="port-rev-map-viz" width="800" height="300"></svg>
+
+        <table class="table table-sm table-dark">
+          <thead>
+            <tr>
+              <th scope="col">Country</th>
+              <th scope="col">Percent</th>
+              <th scope="col">Revenue ($.M)</th>
+            </tr>
+          </thead>
+          <tbody id='port-georev-table' style='background-color: black;'></tbody>
+        </table>
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- GeorevModal MODAL -->
+<div class="modal fade" id="portSupplierModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >Suppliers by Country for Portfolio</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='supplier-modal-body'>
+        <svg id="port-supp-map-viz" width="800" height="300"></svg>
+
+        <table class="table table-sm table-dark">
+          <thead>
+            <tr>
+              <th scope="col">Country</th>
+              <th scope="col">Supplier Count</th>
+              <th scope="col">Supplier %</th>
+            </tr>
+          </thead>
+          <tbody id='port-geosupp-table' style='background-color: black;'></tbody>
+        </table>
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- PORT PERF MODAL -->
+<div class="modal fade" id="portPerfModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >🎭 Portfolio Performance</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+
+        <div class="modal-body" id='supplier-modal-body'>
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-xs-4">
+              <div class="input-group sm-2" id='add-compare-input-port'>
+                <input type="date" class="form-control input-sm" onchange="port_date_change()" placeholder="AS OF" id='port-datetime-input' aria-describedby="basic-addon1">
+
+                <input type="text" class="form-control input-sm" placeholder="Ticker" maxlength="10" id='port-ticker-input' style="text-transform:uppercase; " aria-describedby="basic-addon1">
+                <button type="button" id='add-trace-btn' class="btn btn-success btn-sm" onclick="addTraceToPort($('#port-ticker-input').val().toUpperCase());$('#port-ticker-input').val('')">add</button>&nbsp;&nbsp;&nbsp;
+                <div id='port-compare-input-area-pills'></div>
+              </div>
+              </div>
+            </div>
+        </div>
+
+        <div id="port-perf-chart" style='background-color:black; width: 100%;'></div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ARCHITECTURE MODAL existingPortsModal-->
+<div class="modal fade" id="archModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >Snowflake - App Architecture</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='supplier-modal-body'>
+        <div class="text-center">
+          <img src="imgs/arch.png" style='width:100%' class="rounded" alt="Arch">
+        </div>
+        
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- EXISTING PORTS MODAL -->
+<div class="modal fade" id="existingPortsModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >Asset in Portoflios</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='supplier-modal-body'>
+
+        <table class='table table-sm table-dark' style='width:100%'>
+          <thead>
+            <tr><th colspan="4">Existing Portfolios</th></tr>
+            <tr>
+              <th>🎫 Name</th>
+              <th>🏭 Units</th>
+              <th>𑅀 PMV</th>
+            </tr>
+          </thead>
+
+          <tbody id='asset-existing-port' style='background-color:black'><tbody>
+        </table>
+
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- EXISTING PORTS MODAL -->
+<div class="modal fade" id="newsModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" >News</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='news-modal-body'>
+
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- PCI MODAL -->
+<div class="modal fade" id="cpiModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Consumer Price Index</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='CPI'>
+ 
+        <div class="input-group mb-3">
+          <div class="input-group-prepend">
+            <label class="input-group-text" for="cpi-country">Country Code</label>
+          </div>
+          <select class="custom-select" id="cpi-country" onchange="getCPI()">
+            <option selected>United States</option><option>Argentina</option><option>Australia</option><option>Austria</option><option>Bahrain</option><option>Bangladesh</option><option>Belarus</option><option>Belgium</option><option>Bolivia</option><option>Brazil</option><option>Bulgaria</option><option>Canada</option><option>Chile</option><option>China</option><option>Colombia</option><option>Costa Rica</option><option>Croatia</option><option>Cyprus</option><option>Czech Republic</option><option>Denmark</option><option>Dominican Republic</option><option>Ecuador</option><option>Egypt</option><option>El Salvador</option><option>Estonia</option><option>Finland</option><option>France</option><option>Germany</option><option>Greece</option><option>Hong Kong</option><option>Hungary</option><option>Iceland</option><option>India</option><option>Indonesia</option><option>Ireland</option><option>Italy</option><option>Jamaica</option><option>Japan</option><option>Jordan</option><option>Kazakhstan</option><option>Kuwait</option><option>Latvia</option><option>Lithuania</option><option>Luxembourg</option><option>Malaysia</option><option>Malta</option><option>Mexico</option><option>Morocco</option><option>Netherlands</option><option>New Zealand</option><option>Nicaragua</option><option>Nigeria</option><option>Norway</option><option>Pakistan</option><option>Panama</option><option>Paraguay</option><option>Peru</option><option>Philippines</option><option>Poland</option><option>Portugal</option><option>Qatar</option><option>Romania</option><option>Russian Federation</option><option>Saudi Arabia</option><option>Singapore</option><option>Slovakia</option><option>Slovenia</option><option>South Africa</option><option>South Korea</option><option>Spain</option><option>Sri Lanka</option><option>Sweden</option><option>Switzerland</option><option>Taiwan</option><option>Thailand</option><option>Tunisia</option><option>Turkey</option><option>Ukraine</option><option>United Arab Emirates</option><option>United Kingdom</option><option>Uruguay</option><option>Venezuela</option><option>Vietnam</option>
+          </select>
+        </div>
+
+        <div id="cpi-chart" style='background-color:black; width: 100%;'></div>
+
+        <table class='table table-sm table-dark' style='width:100%'>
+          <thead>
+            <tr>
+              <th class="text-right">Date</th>
+              <th class='text-left'>Value</th>
+            </tr>
+          </thead>
+
+          <tbody id='cpi-port' style='background-color:black'><tbody>
+        </table>
+
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- BurevModal MODAL -->
+<div class="modal fade" id="BurevModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Revenue by Busness Segment</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id='CPI'>
+ 
+        <table class='table table-sm table-dark' style='width:100%'>
+          <thead>
+            <tr>
+              <th class="text-right">Business Segment</th>
+              <th class='text-left'>Rev Pct</th>
+            </tr>
+          </thead>
+
+          <tbody id='bu-rev' style='background-color:black'><tbody>
+        </table>
+
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 
 

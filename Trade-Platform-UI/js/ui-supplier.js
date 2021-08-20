@@ -1,13 +1,17 @@
-function getSupplierData(){
+function getSupplierData(symbol){
   $('#ticker-supplier-table').html(' ')
-    var SQL = ` SELECT *
+    var SQL = ` SELECT SUPPLIER_FACTSET_ENTITY_ID, SUPPLIERNAME, COUNTRY_DESC, REVENUE_PCT,
+                       TARGET_ENTITY_KEYWORD, RELATIONSHIP_KEYWORD1, MAP_ISO, ENTITY_TYPE,
+                       (COUNT(*) OVER(PARTITION BY MAP_ISO)/ sum(count(*)) OVER () * 100) AS PCT
                 FROM FIN_DEMO_UI.META.SUPPLIER_INFO
-                WHERE TICKER IN ('${gbl.currentAssetView.SYMBOL}-US')
+                WHERE TICKER IN ('${symbol}-US')
+                GROUP BY 1,2, 3,4,5,6,7,8
                 ORDER BY REVENUE_PCT DESC; `;
 
-  getGeoRev();
+  getGeoRev(symbol);
 
   runSQL(gbl.indconn, SQL).then((res)=>{
+    create_map('supp-map-viz', res, "MAP_ISO","PCT")
     var tr = '';
     for(i=0; i < res.length; i++){
       tr += '<tr>'
@@ -27,16 +31,16 @@ function getSupplierData(){
 }//end get supplier data
 
 
-function getGeoRev(){ 
+function getGeoRev(symbol){ 
   $('#ticker-supplier-table').html(' ')
   var SQL = ` SELECT *
               FROM FIN_DEMO_UI.META.COUNTRY_REV_EXPOSURE
-              WHERE ticker_region IN ('${gbl.currentAssetView.SYMBOL}-US')
+              WHERE ticker_region IN ('${symbol}-US')
               ORDER BY est_pct DESC; `;
 
-
-
   runSQL(gbl.indconn, SQL).then((res)=>{
+    create_map('supplier-map-viz', res, "MAP_ISO","EST_PCT")
+
     var tr = '';
     for(i=0; i < res.length; i++){
       tr += '<tr>'

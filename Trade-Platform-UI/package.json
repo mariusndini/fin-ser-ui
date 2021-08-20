@@ -1,6 +1,6 @@
 {
   "name": "trade-platform-ui",
-  "version": "1.6.3",
+  "version": "1.6.5",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -14,6 +14,7 @@
     "electron": "^11.4.9"
   },
   "dependencies": {
-    "snowflake-sdk": "^1.5.3"
+    "snowflake-sdk": "^1.5.3",
+    "technicalindicators": "^3.1.0"
   }
 }
