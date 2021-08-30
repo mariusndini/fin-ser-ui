@@ -25,7 +25,6 @@ function getSandPSparkline(){ //for scrolling marque
                 }
             }
             $('#trends-marquee').append(`<div onmouseover='showMarqueePopup(this);' style="display: inline-block;"><b onclick='showAsset("`+SP500[k]+`")'>`+SP500[k]+`</b> `+end+`<span id='sparkline-`+SP500[k]+`' style='height: 100%;width: 50px;'></span></div>`);
-            console.log(k);
             $("#sparkline-"+SP500[k]).sparkline(t, {
                 type: 'line',
                 width: '50px',
