@@ -34,7 +34,7 @@
     <script src='../js/ui-map.js'></script>
     <script src='../js/bitcoin.js'></script>
     <script src='../js/polygon.js'></script>
-    <script src='../js/wsConnect.js'></script>
+    <script src='../js/ui-top-predict.js'></script>
 
     <style>
       .modebar{
@@ -112,12 +112,12 @@
   <body style='background-color: black; color:white;' >
     <!-- BOTTOM SCROLL NEWS FEED BAR -->
     <div style='background-color: black;position: absolute; bottom: 0; width: 100%;height: 25px;z-index: 999;border-top: 1px ridge #555;'>
-      <div style='color: white; position: relative; width: 0; height: 0'><b>S&P500</b></div>
+      <div style='color: white; background-color: black; z-index: 999; padding-right: 10px; padding-left:10px; position:absolute;border-right: 2px solid #898e8c;'><b>S&P500</b></div>
       <marquee scrollamount="5" behavior="scroll" onmouseover="this.stop()" onmouseout="this.start()" direction="left" id='trends-marquee'></marquee>
     </div>
 
     <div style='background-color: rgb(232, 232, 232);position: absolute; bottom: 25px; width: 100%;height: 25px;z-index: 999;border-top: 1px ridge #555;'>
-      <div style='color: black; position: relative; width: 0; height: 0'><b>QQQ100</b></div>
+      <div style='color: black; background-color: rgb(232, 232, 232); z-index: 999; padding-right: 8px; padding-left:10px; position:absolute;border-right: 2px solid #898e8c;'><b>QQQ100</b></div>
       <marquee scrollamount="7" behavior="scroll" onmouseover="this.stop()" onmouseout="this.start()" direction="left" id='QQQ-marquee'></marquee>
     </div>
 
@@ -133,6 +133,7 @@
                 <button type="button" class="btn btn-primary dropdown-toggle text-right snowbutton" data-toggle="dropdown" style='border-radius: 0px;border-color: black;'  aria-haspopup="true" aria-expanded="false">Menu 📺 </button>
                 <div class="dropdown-menu" x-placement="right-start" style="position: absolute; transform: translate3d(111px, 0px, 0px); top: 0px; left: 0px; will-change: transform;">
                   <a class="dropdown-item" href="#" onclick="showLeaderboard()">Fund Portfolios</a>
+                  <a class="dropdown-item" href="#" data-toggle="modal" data-target="#predictMainModal">🔮 Predict</a>
                   <a class="dropdown-item" href="#" onclick="showBitcoin();openSocket()">Bitcoin Stream</a>
                   <a class="dropdown-item" href="#" onclick="showProfile()">Profile</a>
                 </div>
@@ -451,6 +452,7 @@
                 <button type="button" class="btn btn-light" data-toggle="modal" data-target="#BurevModal">🗓 Segment Rev</button>
                 <button type="button" class="btn btn-light" data-toggle="modal" data-target="#newsModal">🗞 News</button>
                 <button type="button" class="btn btn-light" data-toggle="modal" data-target="#cpiModal"> 📊CPI</button>
+                <button type="button" class="btn btn-light" data-toggle="modal" data-target="#predictModal">🔮 Predict</button>
                 <button type="button" class="btn btn-light" data-toggle="modal" data-target="#existingPortsModal" id='exist-port-btn'>💼 Portfolios</button>
 
 
@@ -1023,6 +1025,99 @@
           </thead>
 
           <tbody id='bu-rev' style='background-color:black'><tbody>
+        </table>
+
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- PREDICT MODAL -->
+<div class="modal fade" id="predictModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Price Prediction</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+ 
+        <table class='table table-sm table-dark' style='width:100%'>
+          <thead>
+            <tr>
+              <th class="text-right">Date</th>
+              <th class='text-right'>Open</th>
+              <th class='text-right'>Forecast</th>
+              <th class='text-right'>Actual Open</th>
+            </tr>
+          </thead>
+
+          <tbody id='price-predict' style='background-color:black'><tbody>
+        </table>
+
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">👍</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- PREDICT MODAL -->
+<div class="modal fade" id="predictMainModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Top Predicted Assets</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style='width:50%'>
+          <div class="input-group sm-2" id='add-compare-input-area'>
+            $<input type="number" class="form-control input-sm" value='1000000' maxlength="15" id='init-investment' aria-describedby="basic-addon1" style='width:100px;'>
+            <select class="custom-select" id="top-x-assets" >
+              <option selected>10</option>
+              <option>15</option>
+              <option>20</option>
+              <option>30</option>
+              <option>35</option>
+              <option>40</option>
+              <option>45</option>
+              <option>50</option>
+            </select>
+            
+            <button type="button" class="btn btn-success btn-sm" onclick="getTopPredict();">Forecast</button>&nbsp;&nbsp;&nbsp;
+
+
+          </div>
+        </div>
+
+        <div id="forecast-chart" style='background-color:black; width: 100%;'></div>
+
+        <table class='table table-sm table-dark' style='width:100%'>
+          <thead>
+            <tr>
+              <th class="text-right">Date</th>
+              <th class="text-right">Asset</th>
+              <th class='text-right'>Investment</th>
+              <th class='text-right'>Forecast PnL</th>
+              <th class='text-right'>Actual PnL</th>
+            </tr>
+          </thead>
+
+          <tbody id='price-predict-main' style='background-color:black'><tbody>
         </table>
 
 

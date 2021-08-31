@@ -25,6 +25,7 @@ function getSandPSparkline(){ //for scrolling marque
                 }
             }
             $('#trends-marquee').append(`<div onmouseover='showMarqueePopup(this);' style="display: inline-block;"><b onclick='showAsset("`+SP500[k]+`")'>`+SP500[k]+`</b> `+end+`<span id='sparkline-`+SP500[k]+`' style='height: 100%;width: 50px;'></span></div>`);
+
             $("#sparkline-"+SP500[k]).sparkline(t, {
                 type: 'line',
                 width: '50px',
@@ -71,7 +72,7 @@ function getQQQSparkline(){ //for scrolling marque
                 }
             }
             $('#QQQ-marquee').append(`<div onmouseover='showMarqueePopup(this);' style="display: inline-block;color:black;"><b onclick='showAsset("`+SP500[k]+`")'>`+SP500[k]+`</b> `+end+`<span id='sparklineQQQ-`+SP500[k]+`' style='height: 100%;width: 50px;'></span></div>`);
-            console.log(k);
+
             $("#sparklineQQQ-"+SP500[k]).sparkline(t, {
                 type: 'line',
                 width: '50px',

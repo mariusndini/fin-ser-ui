@@ -1,12 +1,12 @@
 {
   "name": "trade-platform-ui",
-  "version": "1.6.5",
+  "version": "1.7.0",
   "description": "",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "build": "electron-builder -m"
+    "build": "electron-builder -m -w"
   },
   "author": "",
   "license": "ISC",

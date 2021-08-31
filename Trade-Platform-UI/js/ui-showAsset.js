@@ -11,6 +11,7 @@ function showAsset(t, index){
   getNews(t);
   getCPI();
   getSegPct(t);
+  getFutrePrice(t);
 
 
   $('#add-compare-input-area-pills').html(' ');
@@ -112,6 +113,32 @@ function getSegPct(asset){
 
 }
 
+
+
+function getFutrePrice(t){
+  var SQL = ` SELECT TICKER, DATE_MONTH, STOCK_OPEN_PRICE, FORECAST_STOCK_PRICE, STOCK_NEXT_OPEN_PRICE
+              FROM INDUSTRY_FINANCIAL_SERVICES.ANALYTICS.FORECAST_PCT_CHANGE_ON_ACTUAL_V
+              where ticker = '${t}'
+              order by date_month asc;`; 
+
+  $('#price-predict').html(' ')
+
+  runSQL(gbl.indconn, SQL).then((res)=>{
+    var tr = '';
+    for(i=0; i < res.length; i++){
+      tr += `<tr>
+            <td class="text-right">${(res[i].DATE_MONTH)}</td>    
+            <td class="text-right">${(res[i].STOCK_OPEN_PRICE).toLocaleString('en', {maximumFractionDigits: 2, minimumFractionDigits: 2})}</td>
+            <td class="text-right">${(res[i].FORECAST_STOCK_PRICE).toLocaleString('en', {maximumFractionDigits: 2, minimumFractionDigits: 2})}</td>
+            <td class="text-right">${(res[i].STOCK_NEXT_OPEN_PRICE || 0).toLocaleString('en', {maximumFractionDigits: 2, minimumFractionDigits: 2})}</td>
+          </tr>`
+    }
+
+    $('#price-predict').html(tr)  
+    //drawCPI('cpi-chart', data.day, data.cpi)
+
+  })
+}
 
 
 function getCPI(){
